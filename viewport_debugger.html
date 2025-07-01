@@ -407,6 +407,11 @@
             });
 
             // --- Initial Setup ---
+            document.addEventListener("keyup", function(e) {
+                switch(e.which) {
+                    // no-op
+                }
+            }
             handleCanvasToggle();
             initializeCanvas();
             renderLoop();
