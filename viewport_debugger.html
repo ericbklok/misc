@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <!-- This meta tag is critical for responsive design and is often a source of viewport issues. -->
-    <meta name="viewport" content="width=device-width, maximum-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Viewport & Input Debugger</title>
     
     <!-- Tailwind CSS for styling -->
@@ -44,16 +44,13 @@
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden">
-    <!-- Unused but to see if this can trigger some bugs -->
-    <canvas id="canvas"></canvas><br/>
-    
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden" onload="initializeApp()">
+
     <!-- Pointer location indicator -->
     <div id="cursor-indicator" class="fixed top-0 left-0 z-50 pointer-events-none hidden">
         <!-- Crosshair visual -->
         <div class="absolute w-8 h-px bg-red-500 top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2"></div>
         <div class="absolute h-8 w-px bg-red-500 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"></div>
-        <!-- REVERTED: Coordinates text, re-added top-4 and removed JS transform logic -->
         <div id="cursor-coords" class="absolute top-4 whitespace-nowrap text-xs font-mono bg-red-500 text-white px-1.5 py-0.5 rounded-md shadow-lg"></div>
     </div>
 
@@ -133,7 +130,7 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
+        function initializeApp() {
             // --- DOM Element References ---
             const viewportInfoDiv = document.getElementById('viewport-info');
             const screenInfoDiv = document.getElementById('screen-info');
@@ -150,6 +147,7 @@
 
             // --- State ---
             let canvasElement = null;
+            let canvasContext = null; // Holds the 2D rendering context for the canvas
             let wheelTimeout;
             let updatePending = false;
             
@@ -235,54 +233,88 @@
                         renderInfo(touchInfoDiv, infoState.touch, 'Touch the screen.');
                         renderInfo(wheelInfoDiv, infoState.wheel, 'Use scroll wheel.');
                         
-                        if (canvasElement) drawOnCanvas();
+                        if (canvasElement) {
+                            initializeCanvas(); // Setup canvas size and scale
+                            drawOnCanvas();     // Perform drawing operations
+                        }
                         
                         updatePending = false;
                     });
                 }
             };
             
-            const drawOnCanvas = () => {
+            /**
+             * NEW: Initializes the canvas by setting its size and scale based on device pixel ratio.
+             * This ensures the canvas is sharp on high-DPI screens.
+             * It's called on initial load and on every resize event via the renderLoop.
+             */
+            const initializeCanvas = () => {
                 if (!canvasElement) return;
-                const ctx = canvasElement.getContext('2d');
+
                 const dpr = window.devicePixelRatio || 1;
                 const rect = canvasElement.getBoundingClientRect();
 
-                if (canvasElement.width !== rect.width * dpr || canvasElement.height !== rect.height * dpr) {
-                    canvasElement.width = rect.width * dpr;
-                    canvasElement.height = rect.height * dpr;
-                    ctx.scale(dpr, dpr);
+                // Only resize if needed to prevent clearing the context unnecessarily.
+                // Rounding the values helps prevent sub-pixel issues.
+                const newWidth = Math.round(rect.width * dpr);
+                const newHeight = Math.round(rect.height * dpr);
+
+                if (canvasElement.width !== newWidth || canvasElement.height !== newHeight) {
+                    canvasElement.width = newWidth;
+                    canvasElement.height = newHeight;
+                    
+                    // Get a new context and scale it. This must be done after every resize.
+                    canvasContext = canvasElement.getContext('2d');
+                    canvasContext.scale(dpr, dpr);
                 }
-                
+            };
+
+            /**
+             * MODIFIED: This function now only handles drawing, assuming the canvas is already initialized.
+             */
+            const drawOnCanvas = () => {
+                if (!canvasContext) return; // If context is not ready, do nothing.
+
+                const rect = canvasElement.getBoundingClientRect();
                 const width = rect.width;
                 const height = rect.height;
 
-                ctx.clearRect(0, 0, width, height);
+                canvasContext.clearRect(0, 0, width, height);
                 const majorGridColor = '#cbd5e1', minorGridColor = '#e2e8f0';
                 const textColor = '#475569', majorStep = 100, minorStep = 25;
 
-                ctx.lineWidth = 1; ctx.font = '10px Inter, sans-serif';
-                ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+                canvasContext.lineWidth = 1; 
+                canvasContext.font = '10px Inter, sans-serif';
+                canvasContext.textAlign = 'left'; 
+                canvasContext.textBaseline = 'top';
 
-                ctx.strokeStyle = minorGridColor; ctx.beginPath();
-                for (let x = 0; x <= width; x += minorStep) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
-                for (let y = 0; y <= height; y += minorStep) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
-                ctx.stroke();
+                canvasContext.strokeStyle = minorGridColor; 
+                canvasContext.beginPath();
+                for (let x = 0; x <= width; x += minorStep) { canvasContext.moveTo(x, 0); canvasContext.lineTo(x, height); }
+                for (let y = 0; y <= height; y += minorStep) { canvasContext.moveTo(0, y); canvasContext.lineTo(width, y); }
+                canvasContext.stroke();
 
-                ctx.strokeStyle = majorGridColor; ctx.fillStyle = textColor; ctx.beginPath();
+                canvasContext.strokeStyle = majorGridColor; 
+                canvasContext.fillStyle = textColor; 
+                canvasContext.beginPath();
                 for (let x = 0; x <= width; x += majorStep) {
-                    ctx.moveTo(x, 0); ctx.lineTo(x, height); if (x > 0) ctx.fillText(x, x + 4, 4);
+                    canvasContext.moveTo(x, 0); canvasContext.lineTo(x, height); if (x > 0) canvasContext.fillText(x, x + 4, 4);
                 }
                 for (let y = 0; y <= height; y += majorStep) {
-                    ctx.moveTo(0, y); ctx.lineTo(width, y); if (y > 0) ctx.fillText(y, 4, y + 4);
+                    canvasContext.moveTo(0, y); canvasContext.lineTo(width, y); if (y > 0) canvasContext.fillText(y, 4, y + 4);
                 }
-                ctx.stroke();
+                canvasContext.stroke();
 
-                ctx.font = 'bold 12px Inter, sans-serif'; ctx.fillStyle = '#1e293b';
-                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-                ctx.fillText(`Canvas Rendered W ≈ ${width.toFixed(0)}px`, width / 2, height - 8);
+                canvasContext.font = 'bold 12px Inter, sans-serif'; 
+                canvasContext.fillStyle = '#1e293b';
+                canvasContext.textAlign = 'center'; 
+                canvasContext.textBaseline = 'bottom';
+                canvasContext.fillText(`Canvas Rendered W ≈ ${width.toFixed(0)}px`, width / 2, height - 8);
             };
             
+            /**
+             * MODIFIED: Clears the canvas context when the element is removed.
+             */
             const handleCanvasToggle = () => {
                 if (canvasToggle.checked) {
                     if (!canvasElement) {
@@ -292,43 +324,36 @@
                         canvasContainer.appendChild(canvasElement);
                     }
                 } else {
-                    if (canvasElement) { canvasElement.remove(); canvasElement = null; }
+                    if (canvasElement) { 
+                        canvasElement.remove(); 
+                        canvasElement = null;
+                        canvasContext = null; // Clear context reference
+                    }
                 }
                 renderLoop();
             };
 
-            /**
-             * REVERTED: Updates and repositions the live pointer indicator.
-             * @param {number} x - The clientX coordinate.
-             * @param {number} y - The clientY coordinate.
-             */
             const updatePointerIndicator = (x, y) => {
                 if (!cursorIndicator || !cursorCoords) return;
 
-                // Set main indicator position
                 cursorIndicator.style.left = `${x}px`;
                 cursorIndicator.style.top = `${y}px`;
                 cursorCoords.textContent = `${Math.round(x)}, ${Math.round(y)}`;
 
-                // Reposition the text label based on which half of the screen the cursor is on.
                 if (x > window.innerWidth / 2) {
-                    // Position text to the left of the crosshair
                     cursorCoords.style.left = 'auto';
-                    cursorCoords.style.right = '1rem'; // 16px
+                    cursorCoords.style.right = '1rem';
                 } else {
-                    // Position text to the right of the crosshair
                     cursorCoords.style.right = 'auto';
-                    cursorCoords.style.left = '1rem'; // 16px
+                    cursorCoords.style.left = '1rem';
                 }
             };
             
-            // --- Event Handlers (REVERTED) ---
             const handleMouseMove = (e) => {
                 infoState.mouse.clientX = e.clientX;
                 infoState.mouse.clientY = e.clientY;
                 infoState.mouse.target = e.target.tagName.toLowerCase();
                 
-                // Use the helper to update the visual indicator
                 updatePointerIndicator(e.clientX, e.clientY);
                 renderLoop();
             };
@@ -342,11 +367,9 @@
                     infoState.touch.clientX = lastTouch.clientX.toFixed(0);
                     infoState.touch.clientY = lastTouch.clientY.toFixed(0);
                     infoState.touch.target = lastTouch.target.tagName.toLowerCase();
-                    // Use the helper to update the visual indicator for touch
                     updatePointerIndicator(lastTouch.clientX, lastTouch.clientY);
                 }
                 
-                // Show/hide indicator based on touch events
                 if (e.type === 'touchstart' || e.type === 'touchmove') {
                     if (cursorIndicator) cursorIndicator.classList.remove('hidden');
                 } else if (e.type === 'touchend' && e.touches.length === 0) {
@@ -364,7 +387,7 @@
                 wheelTimeout = setTimeout(() => { Object.keys(infoState.wheel).forEach(k => infoState.wheel[k] = 'N/A'); renderLoop(); }, 1000);
             };
 
-            // --- Event Listeners (REVERTED) ---
+            // --- Event Listeners ---
             window.addEventListener('resize', renderLoop);
             canvasToggle.addEventListener('change', handleCanvasToggle);
             document.body.addEventListener('mousemove', handleMouseMove, { passive: true });
@@ -375,7 +398,6 @@
             document.body.addEventListener('touchend', handleTouch, { passive: true });
             window.addEventListener('wheel', handleWheel, { passive: true });
             
-            // Show/hide indicator on mouse enter/leave
             document.body.addEventListener('mouseenter', (e) => {
                 if (cursorIndicator) cursorIndicator.classList.remove('hidden');
                 updatePointerIndicator(e.clientX, e.clientY);
@@ -384,10 +406,11 @@
                 if (cursorIndicator) cursorIndicator.classList.add('hidden');
             });
 
-            // --- Initial Setup (REVERTED) ---
+            // --- Initial Setup ---
+            initializeCanvas();
             handleCanvasToggle();
             renderLoop();
-        });
+        }
     </script>
 </body>
 </html>
