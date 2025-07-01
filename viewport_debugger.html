@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- This meta tag is critical for responsive design and is often a source of viewport issues. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewport & Input Debugger</title>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+
+            /* Add background grid for the entire page */
+            background-color: #f1f5f9; /* bg-slate-100 */
+            background-image: 
+                linear-gradient(#e2e8f0 1px, transparent 1px),
+                linear-gradient(to right, #e2e8f0 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        /* Custom styling for the toggle switch */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #4f46e5; /* indigo-600 */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #4f46e5; /* indigo-600 */
+        }
+        
+        /* Helper to ensure consistent height for info cards */
+        .info-card {
+            height: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-2 sm:p-4 overflow-hidden">
+
+    <!-- Pointer location indicator -->
+    <div id="cursor-indicator" class="fixed top-0 left-0 z-50 pointer-events-none hidden">
+        <!-- Crosshair visual -->
+        <div class="absolute w-8 h-px bg-red-500 top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2"></div>
+        <div class="absolute h-8 w-px bg-red-500 left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2"></div>
+        <!-- REVERTED: Coordinates text, re-added top-4 and removed JS transform logic -->
+        <div id="cursor-coords" class="absolute top-4 whitespace-nowrap text-xs font-mono bg-red-500 text-white px-1.5 py-0.5 rounded-md shadow-lg"></div>
+    </div>
+
+
+    <!-- Background dimension labels. Positioned fixed with a low z-index -->
+    <div id="width-label-container" class="fixed top-1 left-0 w-full h-6 flex items-center justify-center z-0 pointer-events-none">
+        <div id="width-label" class="text-slate-400 text-xs font-mono bg-slate-100/50 backdrop-blur-sm px-2 py-1 rounded"></div>
+    </div>
+    <div id="height-label-container" class="fixed top-0 right-1 h-full w-6 flex items-center justify-center z-0 pointer-events-none">
+        <div id="height-label" class="text-slate-400 text-xs font-mono transform rotate-90 whitespace-nowrap bg-slate-100/50 backdrop-blur-sm px-2 py-1 rounded"></div>
+    </div>
+
+    <!-- Main content container with a higher z-index -->
+    <div class="w-full max-w-4xl mx-auto relative z-10">
+        <header class="text-center mb-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-900">Viewport & Input Debugger</h1>
+            <p class="text-slate-500 mt-1 text-sm">Interact with the page to see real-time debugging information.</p>
+        </header>
+
+        <main>
+            <div class="bg-white rounded-xl shadow-lg p-4 md:p-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    
+                    <!-- Viewport Dimensions -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <h2 class="text-md font-semibold text-indigo-700 border-b pb-1">Viewport</h2>
+                        <div id="viewport-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+
+                    <!-- Device Screen -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <h2 class="text-md font-semibold text-teal-700 border-b pb-1">Device</h2>
+                        <div id="screen-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+
+                    <!-- Canvas Dimensions -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <h2 class="text-md font-semibold text-rose-700 border-b pb-1">Canvas</h2>
+                        <div id="canvas-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+                </div>
+                 <div class="mt-4 border-t pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+                    <label for="canvas-toggle" class="font-medium text-slate-700 text-sm">Show Canvas Element:</label>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="toggle" id="canvas-toggle" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-2 appearance-none cursor-pointer" checked/>
+                        <label for="canvas-toggle" class="toggle-label block overflow-hidden h-5 rounded-full bg-slate-300 cursor-pointer"></label>
+                    </div>
+                </div>
+                <div id="canvas-container" class="mt-4 min-h-[150px] bg-white rounded-lg"></div>
+            </div>
+
+            <div class="mt-6 bg-white rounded-xl shadow-lg p-4 md:p-6">
+                <h2 class="text-xl font-bold text-center text-slate-800 mb-4">Input & Pointer Debugger</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Mouse Info -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                         <h3 class="text-md font-semibold text-sky-700 border-b pb-1">Mouse</h3>
+                         <div id="mouse-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+                     <!-- Touch Info -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="text-md font-semibold text-lime-700 border-b pb-1">Touchscreen</h3>
+                        <div id="touch-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+                    <!-- Wheel Info -->
+                    <div class="info-card space-y-2 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                        <h3 class="text-md font-semibold text-amber-700 border-b pb-1">Scroll Wheel</h3>
+                        <div id="wheel-info" class="space-y-2 font-mono text-xs"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-6 text-xs text-slate-400">
+            <p>A simple tool to help debug viewport and device display properties.</p>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element References ---
+            const viewportInfoDiv = document.getElementById('viewport-info');
+            const screenInfoDiv = document.getElementById('screen-info');
+            const canvasInfoDiv = document.getElementById('canvas-info');
+            const canvasContainer = document.getElementById('canvas-container');
+            const canvasToggle = document.getElementById('canvas-toggle');
+            const mouseInfoDiv = document.getElementById('mouse-info');
+            const touchInfoDiv = document.getElementById('touch-info');
+            const wheelInfoDiv = document.getElementById('wheel-info');
+            const widthLabel = document.getElementById('width-label');
+            const heightLabel = document.getElementById('height-label');
+            const cursorIndicator = document.getElementById('cursor-indicator');
+            const cursorCoords = document.getElementById('cursor-coords');
+
+            // --- State ---
+            let canvasElement = null;
+            let wheelTimeout;
+            let updatePending = false;
+            
+            // --- Data State ---
+            const infoState = {
+                viewport: {},
+                screen: {},
+                canvas: {},
+                mouse: {
+                    clientX: 'N/A', clientY: 'N/A',
+                    buttons: 'N/A',
+                    target: 'N/A'
+                },
+                touch: {
+                    activeTouches: 0,
+                    clientX: 'N/A', clientY: 'N/A',
+                    target: 'N/A',
+                },
+                wheel: {
+                    deltaX: 'N/A', deltaY: 'N/A', deltaZ: 'N/A',
+                    deltaMode: 'N/A'
+                }
+            };
+            
+            /**
+             * Updates the state with the latest data from the browser.
+             */
+            const updateInfoState = () => {
+                infoState.viewport['innerWidth'] = window.innerWidth;
+                infoState.viewport['innerHeight'] = window.innerHeight;
+                infoState.viewport['devicePixelRatio'] = window.devicePixelRatio.toFixed(2);
+                
+                infoState.screen['width'] = screen.width;
+                infoState.screen['height'] = screen.height;
+                infoState.screen['availWidth'] = screen.availWidth;
+                infoState.screen['Est. CSS DPI'] = (window.devicePixelRatio * 96).toFixed(0);
+                
+                if(canvasElement) {
+                    const rect = canvasElement.getBoundingClientRect();
+                    infoState.canvas['Rendered'] = `${rect.width.toFixed(0)}x${rect.height.toFixed(0)}px`;
+                    infoState.canvas['Attribute'] = `${canvasElement.width}x${canvasElement.height}px`;
+                } else {
+                    infoState.canvas = {'Status': 'Disabled'};
+                }
+            };
+            
+            /**
+             * Updates the background labels with current viewport dimensions.
+             */
+            const updateBackgroundLabels = () => {
+                if (widthLabel && heightLabel) {
+                    widthLabel.textContent = `window.innerWidth: ${window.innerWidth}px`;
+                    heightLabel.textContent = `window.innerHeight: ${window.innerHeight}px`;
+                }
+            };
+
+            /**
+             * Renders a set of data points from a state object into a target DOM element.
+             */
+            const renderInfo = (targetDiv, dataObject, placeholder = 'No data yet.') => {
+                const keys = Object.keys(dataObject);
+                targetDiv.innerHTML = keys.map(key => `
+                    <div class="flex justify-between items-center break-all">
+                        <span class="text-slate-500">${key}:</span>
+                        <span class="font-bold text-slate-900 bg-slate-200 px-1.5 py-0.5 rounded">${dataObject[key]}</span>
+                    </div>
+                `).join('');
+            };
+
+            /**
+             * Main render loop, throttled with requestAnimationFrame.
+             */
+            const renderLoop = () => {
+                if (!updatePending) {
+                    updatePending = true;
+                    requestAnimationFrame(() => {
+                        updateInfoState();
+                        updateBackgroundLabels();
+                        renderInfo(viewportInfoDiv, infoState.viewport);
+                        renderInfo(screenInfoDiv, infoState.screen);
+                        renderInfo(canvasInfoDiv, infoState.canvas, 'Canvas is disabled.');
+                        renderInfo(mouseInfoDiv, infoState.mouse, 'Move mouse over page.');
+                        renderInfo(touchInfoDiv, infoState.touch, 'Touch the screen.');
+                        renderInfo(wheelInfoDiv, infoState.wheel, 'Use scroll wheel.');
+                        
+                        if (canvasElement) drawOnCanvas();
+                        
+                        updatePending = false;
+                    });
+                }
+            };
+            
+            const drawOnCanvas = () => {
+                if (!canvasElement) return;
+                const ctx = canvasElement.getContext('2d');
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvasElement.getBoundingClientRect();
+
+                if (canvasElement.width !== rect.width * dpr || canvasElement.height !== rect.height * dpr) {
+                    canvasElement.width = rect.width * dpr;
+                    canvasElement.height = rect.height * dpr;
+                    ctx.scale(dpr, dpr);
+                }
+                
+                const width = rect.width;
+                const height = rect.height;
+
+                ctx.clearRect(0, 0, width, height);
+                const majorGridColor = '#cbd5e1', minorGridColor = '#e2e8f0';
+                const textColor = '#475569', majorStep = 100, minorStep = 25;
+
+                ctx.lineWidth = 1; ctx.font = '10px Inter, sans-serif';
+                ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+
+                ctx.strokeStyle = minorGridColor; ctx.beginPath();
+                for (let x = 0; x <= width; x += minorStep) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+                for (let y = 0; y <= height; y += minorStep) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+                ctx.stroke();
+
+                ctx.strokeStyle = majorGridColor; ctx.fillStyle = textColor; ctx.beginPath();
+                for (let x = 0; x <= width; x += majorStep) {
+                    ctx.moveTo(x, 0); ctx.lineTo(x, height); if (x > 0) ctx.fillText(x, x + 4, 4);
+                }
+                for (let y = 0; y <= height; y += majorStep) {
+                    ctx.moveTo(0, y); ctx.lineTo(width, y); if (y > 0) ctx.fillText(y, 4, y + 4);
+                }
+                ctx.stroke();
+
+                ctx.font = 'bold 12px Inter, sans-serif'; ctx.fillStyle = '#1e293b';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+                ctx.fillText(`Canvas Rendered W ≈ ${width.toFixed(0)}px`, width / 2, height - 8);
+            };
+            
+            const handleCanvasToggle = () => {
+                if (canvasToggle.checked) {
+                    if (!canvasElement) {
+                        canvasElement = document.createElement('canvas');
+                        canvasElement.id = 'debug-canvas';
+                        canvasElement.className = 'w-full h-48 md:h-56 border-2 border-slate-300 rounded-lg';
+                        canvasContainer.appendChild(canvasElement);
+                    }
+                } else {
+                    if (canvasElement) { canvasElement.remove(); canvasElement = null; }
+                }
+                renderLoop();
+            };
+
+            /**
+             * REVERTED: Updates and repositions the live pointer indicator.
+             * @param {number} x - The clientX coordinate.
+             * @param {number} y - The clientY coordinate.
+             */
+            const updatePointerIndicator = (x, y) => {
+                if (!cursorIndicator || !cursorCoords) return;
+
+                // Set main indicator position
+                cursorIndicator.style.left = `${x}px`;
+                cursorIndicator.style.top = `${y}px`;
+                cursorCoords.textContent = `${Math.round(x)}, ${Math.round(y)}`;
+
+                // Reposition the text label based on which half of the screen the cursor is on.
+                if (x > window.innerWidth / 2) {
+                    // Position text to the left of the crosshair
+                    cursorCoords.style.left = 'auto';
+                    cursorCoords.style.right = '1rem'; // 16px
+                } else {
+                    // Position text to the right of the crosshair
+                    cursorCoords.style.right = 'auto';
+                    cursorCoords.style.left = '1rem'; // 16px
+                }
+            };
+            
+            // --- Event Handlers (REVERTED) ---
+            const handleMouseMove = (e) => {
+                infoState.mouse.clientX = e.clientX;
+                infoState.mouse.clientY = e.clientY;
+                infoState.mouse.target = e.target.tagName.toLowerCase();
+                
+                // Use the helper to update the visual indicator
+                updatePointerIndicator(e.clientX, e.clientY);
+                renderLoop();
+            };
+
+            const handleMouseDownUp = (e) => { infoState.mouse.buttons = e.buttons; renderLoop(); };
+            
+            const handleTouch = (e) => {
+                infoState.touch.activeTouches = e.touches.length;
+                const lastTouch = e.changedTouches[0];
+                if (lastTouch) {
+                    infoState.touch.clientX = lastTouch.clientX.toFixed(0);
+                    infoState.touch.clientY = lastTouch.clientY.toFixed(0);
+                    infoState.touch.target = lastTouch.target.tagName.toLowerCase();
+                    // Use the helper to update the visual indicator for touch
+                    updatePointerIndicator(lastTouch.clientX, lastTouch.clientY);
+                }
+                
+                // Show/hide indicator based on touch events
+                if (e.type === 'touchstart' || e.type === 'touchmove') {
+                    if (cursorIndicator) cursorIndicator.classList.remove('hidden');
+                } else if (e.type === 'touchend' && e.touches.length === 0) {
+                    if (cursorIndicator) cursorIndicator.classList.add('hidden');
+                }
+                renderLoop();
+            };
+
+            const handleWheel = (e) => {
+                infoState.wheel.deltaX = e.deltaX.toFixed(2);
+                infoState.wheel.deltaY = e.deltaY.toFixed(2);
+                infoState.wheel.deltaZ = e.deltaZ.toFixed(2);
+                renderLoop();
+                clearTimeout(wheelTimeout);
+                wheelTimeout = setTimeout(() => { Object.keys(infoState.wheel).forEach(k => infoState.wheel[k] = 'N/A'); renderLoop(); }, 1000);
+            };
+
+            // --- Event Listeners (REVERTED) ---
+            window.addEventListener('resize', renderLoop);
+            canvasToggle.addEventListener('change', handleCanvasToggle);
+            document.body.addEventListener('mousemove', handleMouseMove, { passive: true });
+            document.body.addEventListener('mousedown', handleMouseDownUp, { passive: true });
+            document.body.addEventListener('mouseup', handleMouseDownUp, { passive: true });
+            document.body.addEventListener('touchstart', handleTouch, { passive: true });
+            document.body.addEventListener('touchmove', handleTouch, { passive: true });
+            document.body.addEventListener('touchend', handleTouch, { passive: true });
+            window.addEventListener('wheel', handleWheel, { passive: true });
+            
+            // Show/hide indicator on mouse enter/leave
+            document.body.addEventListener('mouseenter', (e) => {
+                if (cursorIndicator) cursorIndicator.classList.remove('hidden');
+                updatePointerIndicator(e.clientX, e.clientY);
+            });
+            document.body.addEventListener('mouseleave', () => {
+                if (cursorIndicator) cursorIndicator.classList.add('hidden');
+            });
+
+            // --- Initial Setup (REVERTED) ---
+            handleCanvasToggle();
+            renderLoop();
+        });
+    </script>
+</body>
+</html>
