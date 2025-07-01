@@ -326,6 +326,19 @@
                         canvasElement.id = 'debug-canvas';
                         canvasElement.className = 'w-full h-48 md:h-56 border-2 border-slate-300 rounded-lg';
                         canvasContainer.appendChild(canvasElement);
+
+                        var elem = document.getElementById("canvas");
+                        var newscale = window.devicePixelRatio ? window.devicePixelRatio : 1;
+                        var newwidth = window.innerWidth * newscale;
+                        var newheight = window.innerHeight * newscale;
+                        console.log("Old width: " + elem.width + " New width: " + newwidth);
+                        console.log("Old height: " + elem.height + " New height: " + newheight);
+                        console.log("window.innerWidth: " + window.innerWidth + " window.innerHeight: " + window.innerHeight);
+
+                        elem.width = newwidth;
+                        elem.height = newheight;
+                        elem.style.width = window.innerWidth + "px";
+                        elem.style.height = window.innerHeight + "px";
                     }
                 } else {
                     if (canvasElement) { 
