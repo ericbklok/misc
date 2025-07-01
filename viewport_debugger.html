@@ -178,12 +178,6 @@
                 }
             };
 
-            createCanvas();
-            
-            // --- Capture initial state on load ---
-            infoState.viewport['Initial Width'] = window.innerWidth;
-            infoState.viewport['Initial Height'] = window.innerHeight;
-
             /**
              * Updates the state with the latest data from the browser.
              */
@@ -432,6 +426,12 @@
             });
 
             // --- Initial Setup ---
+            createCanvas();
+            
+            // --- Capture initial state on load ---
+            infoState.viewport['Initial Width'] = window.innerWidth;
+            infoState.viewport['Initial Height'] = window.innerHeight;
+
             handleCanvasToggle();
             renderLoop();
         }
