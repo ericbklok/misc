@@ -147,13 +147,19 @@
 
             // --- State ---
             let canvasElement = null;
-            let canvasContext = null; // Holds the 2D rendering context for the canvas
+            let canvasContext = null; 
             let wheelTimeout;
             let updatePending = false;
             
             // --- Data State ---
             const infoState = {
-                viewport: {},
+                viewport: {
+                    'Initial Width': 'N/A',
+                    'Initial Height': 'N/A',
+                    'Current Width': 'N/A',
+                    'Current Height': 'N/A',
+                    'devicePixelRatio': 'N/A'
+                },
                 screen: {},
                 canvas: {},
                 mouse: {
@@ -172,12 +178,17 @@
                 }
             };
             
+            // --- Capture initial state on load ---
+            infoState.viewport['Initial Width'] = window.innerWidth;
+            infoState.viewport['Initial Height'] = window.innerHeight;
+
             /**
              * Updates the state with the latest data from the browser.
              */
             const updateInfoState = () => {
-                infoState.viewport['innerWidth'] = window.innerWidth;
-                infoState.viewport['innerHeight'] = window.innerHeight;
+                // Update only the 'Current' values, preserving the initial ones.
+                infoState.viewport['Current Width'] = window.innerWidth;
+                infoState.viewport['Current Height'] = window.innerHeight;
                 infoState.viewport['devicePixelRatio'] = window.devicePixelRatio.toFixed(2);
                 
                 infoState.screen['width'] = screen.width;
@@ -234,8 +245,8 @@
                         renderInfo(wheelInfoDiv, infoState.wheel, 'Use scroll wheel.');
                         
                         if (canvasElement) {
-                            initializeCanvas(); // Setup canvas size and scale
-                            drawOnCanvas();     // Perform drawing operations
+                            initializeCanvas();
+                            drawOnCanvas();
                         }
                         
                         updatePending = false;
@@ -244,36 +255,29 @@
             };
             
             /**
-             * NEW: Initializes the canvas by setting its size and scale based on device pixel ratio.
-             * This ensures the canvas is sharp on high-DPI screens.
-             * It's called on initial load and on every resize event via the renderLoop.
+             * Initializes the canvas by setting its size and scale based on device pixel ratio.
              */
             const initializeCanvas = () => {
                 if (!canvasElement) return;
 
                 const dpr = window.devicePixelRatio || 1;
                 const rect = canvasElement.getBoundingClientRect();
-
-                // Only resize if needed to prevent clearing the context unnecessarily.
-                // Rounding the values helps prevent sub-pixel issues.
                 const newWidth = Math.round(rect.width * dpr);
                 const newHeight = Math.round(rect.height * dpr);
 
                 if (canvasElement.width !== newWidth || canvasElement.height !== newHeight) {
                     canvasElement.width = newWidth;
                     canvasElement.height = newHeight;
-                    
-                    // Get a new context and scale it. This must be done after every resize.
                     canvasContext = canvasElement.getContext('2d');
                     canvasContext.scale(dpr, dpr);
                 }
             };
 
             /**
-             * MODIFIED: This function now only handles drawing, assuming the canvas is already initialized.
+             * This function now only handles drawing, assuming the canvas is already initialized.
              */
             const drawOnCanvas = () => {
-                if (!canvasContext) return; // If context is not ready, do nothing.
+                if (!canvasContext) return; 
 
                 const rect = canvasElement.getBoundingClientRect();
                 const width = rect.width;
@@ -313,7 +317,7 @@
             };
             
             /**
-             * MODIFIED: Clears the canvas context when the element is removed.
+             * Clears the canvas context when the element is removed.
              */
             const handleCanvasToggle = () => {
                 if (canvasToggle.checked) {
@@ -327,7 +331,7 @@
                     if (canvasElement) { 
                         canvasElement.remove(); 
                         canvasElement = null;
-                        canvasContext = null; // Clear context reference
+                        canvasContext = null;
                     }
                 }
                 renderLoop();
@@ -407,13 +411,7 @@
             });
 
             // --- Initial Setup ---
-            document.addEventListener("keyup", function(e) {
-                switch(e.which) {
-                    // no-op
-                }
-            });
             handleCanvasToggle();
-            initializeCanvas();
             renderLoop();
         }
     </script>
