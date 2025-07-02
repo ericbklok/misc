@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, maximum-scale=1.0">
+    <title>Viewport & Input Debugger</title>
+</head>
+<body onload="initializeApp()">
+  <canvas id="canvas"></canvas>
+  <script>
+        function initializeApp() {
+              canvasElement = document.getElementById('canvas');
+
+              // var newscale = window.devicePixelRatio ? window.devicePixelRatio : 1;
+              // var newwidth = window.innerWidth * newscale;
+              // var newheight = window.innerHeight * newscale;
+              // console.log("Old width: " + canvasElement.width + " New width: " + newwidth);
+              // console.log("Old height: " + canvasElement.height + " New height: " + newheight);
+              // console.log("window.innerWidth: " + window.innerWidth + " window.innerHeight: " + window.innerHeight);
+
+              // // this sets the number of pixels WITHIN the canvas element
+              // canvasElement.width = newwidth;
+              // canvasElement.height = newheight;
+
+              // sets the displayed size of the canvas element <-- !!! this is the cause of the viewport bug !!!
+              console.log("window.innerWidth: " + window.innerWidth + " window.innerHeight: " + window.innerHeight);
+              canvasElement.style.width = window.innerWidth + "px";
+              canvasElement.style.height = window.innerHeight + "px";
+              // canvasElement.style.width = 400 + "px";
+              // canvasElement.style.height = 300 + "px";
+
+              console.log("canvas.style.width: " + canvasElement.style.width);
+              console.log("canvas.style.height: " + canvasElement.style.height);
+        }
+    </script>
+</body>
+</html>
