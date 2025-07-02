@@ -37,8 +37,8 @@
               console.log("canvas.style.width: " + canvasElement.style.width);
               console.log("canvas.style.height: " + canvasElement.style.height);
 
-             document.getElementById('viewportWidthInfo').textContent("Viewport Width: " + window.innerWidth);
-              document.getElementById('viewportHeightInfo').textContent("Viewport Height: " + window.innerHeight);
+             document.getElementById('viewportWidthInfo').textContent = "Viewport Width: " + window.innerWidth;
+              document.getElementById('viewportHeightInfo').textContent = "Viewport Height: " + window.innerHeight;
             };
             
             window.addEventListener('resize', initCanvas);
