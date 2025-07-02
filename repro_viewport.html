@@ -9,6 +9,7 @@
   <canvas id="canvas"></canvas>
   <script>
         function initializeApp() {
+            const initCanvas = (e) => {
               canvasElement = document.getElementById('canvas');
 
               // var newscale = window.devicePixelRatio ? window.devicePixelRatio : 1;
@@ -31,6 +32,10 @@
 
               console.log("canvas.style.width: " + canvasElement.style.width);
               console.log("canvas.style.height: " + canvasElement.style.height);
+            };
+            
+            window.addEventListener('resize', initCanvas);
+            initCanvas();
         }
     </script>
 </body>
