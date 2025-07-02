@@ -6,6 +6,10 @@
     <title>Viewport & Input Debugger</title>
 </head>
 <body onload="initializeApp()">
+  <span id="viewportWidthInfo"></span>
+  <br>
+  <span id="viewportHeightInfo"></span>
+  <br>
   <canvas id="canvas"></canvas>
   <script>
         function initializeApp() {
@@ -32,6 +36,9 @@
 
               console.log("canvas.style.width: " + canvasElement.style.width);
               console.log("canvas.style.height: " + canvasElement.style.height);
+
+             document.getElementById('viewportWidthInfo').textContent("Viewport Width: " + window.innerWidth);
+              document.getElementById('viewportHeightInfo').textContent("Viewport Height: " + window.innerHeight);
             };
             
             window.addEventListener('resize', initCanvas);
